@@ -3,7 +3,7 @@ from django.db  import models
 class Flight(models.Model):
     departure_time = models.DateTimeField()
     arrival_time   = models.DateTimeField()
-    flight_time    = models.DateTimeField()
+    flight_time    = models.CharField(max_length=50)
     seats          = models.ManyToManyField("Seat", through="FlightSeat")
     departure_city = models.ForeignKey("City", on_delete=models.CASCADE, related_name="departure_flight")
     arrival_city   = models.ForeignKey("City", on_delete=models.CASCADE, related_name="arrival_flight")
@@ -16,7 +16,7 @@ class Flight(models.Model):
 
 class FlightSeat(models.Model):
     stock  = models.IntegerField()
-    price  = models.DecimalField()
+    price  = models.DecimalField(max_digits=10, decimal_places=2)
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE)
     seat   = models.ForeignKey("Seat", on_delete=models.CASCADE)
 
