@@ -383,3 +383,6 @@ zsdoc/data
 my_settings.py
 
 uploader.py
+
+resource
+*.csv
