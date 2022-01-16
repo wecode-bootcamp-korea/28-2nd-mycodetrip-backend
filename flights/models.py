@@ -3,7 +3,7 @@ from django.db  import models
 class Flight(models.Model):
     departure_time = models.DateTimeField()
     arrival_time   = models.DateTimeField()
-    flight_time    = models.CharField(max_length=50)
+    flight_time    = models.IntegerField() # timedelta 값을 초 단위로 저장
     seats          = models.ManyToManyField("Seat", through="FlightSeat")
     departure_city = models.ForeignKey("City", on_delete=models.CASCADE, related_name="departure_flight")
     arrival_city   = models.ForeignKey("City", on_delete=models.CASCADE, related_name="arrival_flight")
