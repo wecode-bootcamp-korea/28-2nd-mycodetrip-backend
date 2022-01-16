@@ -2,3 +2,6 @@ Django==4.0.1
 django-cors-headers==3.10.1
 PyMySQL==1.0.2
 cryptography==36.0.1
+pyjwt==2.3.0
+requests==2.27.1
+python-dotenv==0.19.2
