@@ -20,19 +20,18 @@ class AuthorizationView(View):
             "Content-type": "application/x-www-form-urlencoded;charset=utf-8",
             "Authorization": f'Bearer {access_token}'
         }
-        response = requests.post("https://kapi.kakao.com/v2/user/me", headers=headers)
+        response = requests.get("https://kapi.kakao.com/v2/user/me", headers=headers)
         response.raise_for_status()
         response = response.json()
 
         kakao_id = response["id"]
         nickname = response["properties"]["nickname"]
-        email = response["properties"].get("account_email")
+        email = response["kakao_account"].get("email")
 
         # 3. 회원가입 or 로그인
         user, is_created = User.objects.get_or_create(
             kakao_id=kakao_id,
             nickname=nickname,
-            email=email
         )
 
         now = datetime.datetime.now(pytz.utc)
@@ -44,4 +43,9 @@ class AuthorizationView(View):
         }
         access_token = jwt.encode(payload, SECRET_KEY, "HS256")
 
-        return JsonResponse({"access_token": access_token}, status=200)
+        if is_created:
+            status = 201
+        else:
+            status = 200
+
+        return JsonResponse({"access_token": access_token}, status=status)
