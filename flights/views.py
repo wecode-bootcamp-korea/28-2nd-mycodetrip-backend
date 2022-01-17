@@ -109,7 +109,7 @@ class FlightListView(View):
                 "arrival_date": arrival_date,
                 "type": "flight_list",
                 "data": [{
-                    "id": flight.id, # 항공편 pk
+                    "id": FlightSeat.objects.get(flight=flight).id, # 항공편 flight seat pk
                     "flight_time": flight.flight_time, # 비행 시간
                     "airline"    : flight.aircraft.airline.name, # 항공사
                     "aircraft"   : flight.aircraft.code, # 항공기
@@ -133,6 +133,38 @@ class FlightListView(View):
 
         except FlightSeat.DoesNotExist:
             return JsonResponse({"message":"FLIGHTSEAT_DOES_NOT_EXIST"}, status=400)
+
+class ReservationView(View):
+    def get(self, request):
+        # id 값을 통해서 예약 페이지 항공편 조회
+        departure_flight = request.GET.get("departure_flight") # pk = 1332
+        return_flight    = request.GET.get("return_flight")
+
+        flight_seats = FlightSeat.objects.filter(Q(id=departure_flight)|Q(id=return_flight)).order_by("flight__departure_time")
+
+        result = {
+            "type": "selected_flights",
+            "date":[{
+                "id": flight_seat.id,
+                "flight_time": flight_seat.flight.flight_time,
+                    "airline"    : flight_seat.flight.aircraft.airline.name,
+                    "aircraft"   : flight_seat.flight.aircraft.code,
+                    "logo"       : flight_seat.flight.aircraft.airline.logo,
+                    "price"      : flight_seat.price,
+                    "seat_type"  : flight_seat.seat.id,
+                    "departure": {
+                        "time": flight_seat.flight.departure_time,
+                        "city": flight_seat.flight.departure_city.name,
+                        "code": flight_seat.flight.departure_city.code,
+                    },
+                    "arrival": {
+                        "time": flight_seat.flight.arrival_time,
+                        "city": flight_seat.flight.arrival_city.name,
+                        "code": flight_seat.flight.arrival_city.code,
+                    },
+            } for flight_seat in flight_seats]
+        }
+        return JsonResponse({"result":result}, status=200)
 
 class CityListView(View):
     def get(self, request):
