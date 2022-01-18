@@ -5,9 +5,9 @@ from django.views import View
 
 from orders.models import Order, OrderItems
 
-class MyPageView(View):
+class UserOrderView(View):
     def get(self, request):
-        orders = Order.objects.filter(user_id=request.user.id).order_by("-created_at", "id")
+        orders = Order.objects.filter(user=request.user).order_by("-created_at", "id")
 
         data = []
 
@@ -39,5 +39,16 @@ class MyPageView(View):
             "type": "order_list",
             "data": data
         }
+
+        data = [{
+            "order_id" : order.id,
+            "total_price" : order.total_price,
+            "number_of_tickets":order.number_of_tickets,
+            "flights" : [{
+                "title"      : order_item.flight_seats.flight.aircraft.airline.name,
+                "travel_date": order_item.flight_seats.flight.departure_time,
+                "logo"       : order_item.flight_seats.flight.aircraft.airline.logo
+            } for order_item in order.orderitems_set().order_by('flight_seats__flight__depature_time')]
+        } for order in orders]        
 
         return JsonResponse({"result": result}, status=200)

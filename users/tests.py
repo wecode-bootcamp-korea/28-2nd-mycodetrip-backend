@@ -1,11 +1,11 @@
 import datetime
 
 import pytz
-from django.test import TestCase, Client
-from flights.models import Aircraft, Airline
+from django.test    import TestCase, Client
 
-from users.models import User
-from orders.models import Order
+from flights.models import Aircraft, Airline
+from users.models   import User
+from orders.models  import Order
 from flights.models import Category, City, Seat, Flight, FlightSeat
 
 class MyPageViewTest(TestCase):
