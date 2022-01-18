@@ -7,7 +7,10 @@ from django.http import JsonResponse
 from django.views import View
 
 from users.models import User
+from orders.models import Order
 from mycodetrip.config import SECRET_KEY
+from users.decorator import login_required
+
 
 class AuthorizationView(View):
     def post(self, request):
@@ -59,3 +62,28 @@ class AuthorizationView(View):
 
         except KeyError:
             return JsonResponse({"message":"KEY_ERROR"}, status=400)
+
+class UserOrderView(View):
+    @login_required
+    def get(self, request):
+        orders = Order.objects.filter(user=request.user).order_by("-created_at", "id")
+
+        result = {
+            "type": "order_list",
+            "data": [{
+                "id"                 : order.id,
+                "reservation_number" : order.order_number,
+                "total_price"        : order.total_price,
+                "number_of_tickets"  :order.number_of_tickets,
+                "flights" : [{
+                    "id"         : order_item.flight_seats.id,
+                    "airline"    : order_item.flight_seats.flight.aircraft.airline.name,
+                    "departure"  : order_item.flight_seats.flight.departure_city.name,
+                    "arrival"    : order_item.flight_seats.flight.arrival_city.name,
+                    "travel_date": datetime.date(order_item.flight_seats.flight.departure_time),
+                    "logo"       : order_item.flight_seats.flight.aircraft.airline.logo
+                } for order_item in order.orderitems_set().order_by('flight_seats__flight__depature_time')]
+            } for order in orders]
+        }
+
+        return JsonResponse({"result": result}, status=200)
