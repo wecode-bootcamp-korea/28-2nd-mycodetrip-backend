@@ -4,10 +4,10 @@ import datetime
 import pytz
 
 import requests
-from django.http import JsonResponse
+from django.http  import JsonResponse
 from django.views import View
 
-from users.models import User
+from users.models      import User
 from mycodetrip.config import SECRET_KEY
 
 class AuthorizationView(View):
@@ -21,18 +21,29 @@ class AuthorizationView(View):
             "Authorization": f'Bearer {access_token}'
         }
         response = requests.get("https://kapi.kakao.com/v2/user/me", headers=headers)
-        response.raise_for_status()
+        
+        if not response.ok:
+            return 
+        
         response = response.json()
 
         kakao_id = response["id"]
         nickname = response["properties"]["nickname"]
-        email = response["kakao_account"].get("email")
+        email    = response["kakao_account"].get("email")
 
         # 3. 회원가입 or 로그인
         user, is_created = User.objects.get_or_create(
-            kakao_id=kakao_id,
-            nickname=nickname,
+            kakao_id = kakao_id,
+            defaults = {
+                "nickname" : nickname,
+                "email"    : email
+            }
         )
+        
+        # if is_created:
+        #     user.nickname = nickname
+        #     user.email = email
+        #     user.save()
 
         now = datetime.datetime.now(pytz.utc)
 
