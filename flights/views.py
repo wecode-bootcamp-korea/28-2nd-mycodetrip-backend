@@ -85,7 +85,7 @@ class FlightListView(View):
                 "arrival_date": arrival_date,
                 "type": "flight_list",
                 "data": [{
-                    "id": FlightSeat.objects.get(flight=flight).id, # FIXME 에러날 위험?
+                    "id"         : FlightSeat.objects.get(flight=flight).id, # FIXME 에러날 위험?
                     "flight_time": flight.flight_time, # 비행 시간
                     "airline"    : flight.aircraft.airline.name, # 항공사
                     "aircraft"   : flight.aircraft.code, # 항공기
@@ -184,24 +184,15 @@ class SeatTypeView(View):
         }
         return JsonResponse({"result":result}, status=200)
 
-class MainView(View):
+class FlightCardListView(View):
     def get(self, request):
-        # main_card = request.GET.get('main-card', None)
+        city   = request.GET["city"]
+        limit  = request.GET.get("limit", 4)
+        offset = request.GET.get("offset", 0)
 
-        q = Q()
-        
-        # if main_card == '제주':
-        #     q &= Q(arrival_city__name = main_card)
-        #     flights = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(q).order_by("min_price")[0:4]
-
-        # if main_card == '파리':
-        #     q &= Q(arrival_city__name = main_card)
-        #     flights = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(q).order_by("min_price")[0:4]
-
-        flights_jeju = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city = "제주").order_by("min_price")[0:4]
-        flights_paris = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city = "파리").order_by("min_price")[0:4]
-
-        result = [{
+        flights = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city = city)
+    
+        result = {
             "제주" : [{
                 "id"             : flight.id,
                 "image"          : flight.arrival_city.thumbnail_set.first().image,
@@ -210,16 +201,7 @@ class MainView(View):
                 "departure_time" : flight.departure_time,
                 "arrival_time"   : flight.arrival_time,
                 "price"          : int(flight.min_price)
-           } for flight in flights_jeju]},
-           {
-            "파리" : [{
-               "id"             : flight.id,
-                "image"          : flight.arrival_city.thumbnail_set.first().image,
-                "departure_city" : flight.departure_city.name,
-                "arrival_city"   : flight.arrival_city.name, 
-                "departure_time" : flight.departure_time,
-                "arrival_time"   : flight.arrival_time,
-                "price"          : int(flight.min_price)
-           } for flight in flights_paris]}
-        ]
+           } for flight in flights.order_by("min_price")[offset:offset+limit]]
+        }
+        
         return JsonResponse({"result": result}, status=200)
