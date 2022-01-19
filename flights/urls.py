@@ -1,6 +1,6 @@
 from django.urls import path
 
-from flights.views import AirlineListView, CityListView, FlightListView, SeatTypeView, FlightDetailView
+from flights.views import AirlineListView, CityListView, FlightListView, SeatTypeView, FlightDetailView, MainView
 
 
 urlpatterns = [
@@ -9,4 +9,5 @@ urlpatterns = [
     path("/airlines", AirlineListView.as_view()),
     path("/seats", SeatTypeView.as_view()),
     path("/detail", FlightDetailView.as_view()),
+    path("/main", MainView.as_view())
 ]

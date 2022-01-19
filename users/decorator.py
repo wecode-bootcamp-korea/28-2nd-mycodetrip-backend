@@ -12,7 +12,7 @@ def login_required(func):
             payload      = jwt.decode(access_token, SECRET_KEY, algorithms="HS256")
             user         = User.objects.get(id=payload.get("id", 0))
             request.user = user
-
+            
         except KeyError:
             return JsonResponse({"message":"NO_TOKEN"}, status=400)
 

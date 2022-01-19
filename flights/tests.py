@@ -3,7 +3,7 @@ import pytz
 
 from django.test import TestCase, Client
 
-from flights.models import Category, Flight, FlightSeat, Seat, Aircraft, Airline, City
+from flights.models import Category, Flight, FlightSeat, Seat, Aircraft, Airline, City, Thumbnail
 
 NOW = datetime.datetime.now(pytz.utc)
 class FlightListTest(TestCase):
@@ -197,3 +197,69 @@ class SeatTypeViewTest(TestCase):
 
     def tearDown(self):
         Seat.objects.all().delete()
+
+class MainViewTest(TestCase):
+    def setUp(self):
+        Flight.objects.create(
+            id=1,
+            departure_time=datetime.datetime(2022, 1, 19, 6, 24, 35, tzinfo=pytz.utc),
+            arrival_time=datetime.datetime(2022, 1, 19, 6, 24, 35, tzinfo=pytz.utc)+ datetime.timedelta(hours=3),
+            flight_time=3,
+            departure_city_id=1,
+            arrival_city_id=2,
+            aircraft_id=1
+            )
+
+        Thumbnail.objects.create(
+            id=1,
+            image="https://postfiles.pstatic.net/MjAyMjAxMTJfMjM5/MDAxNjQxOTg2NDgyNTY1.j1EtZziHhsuxfoRqmswcZFBZw4TQLdlPgD76IUviWU0g.Qf4_r2cIET-8Aox-iDTUpR9pSX2JcedcCrenLYMK-zIg.PNG.leecj0805/ms.png?type=w966",
+            city_id=1
+            )
+        Aircraft.objects.create(id=1, code="MS999", airline_id=1)
+        Category.objects.create(id=1, name="아시아")
+        City.objects.create(id=1, name="김포", code="GMP", category_id=1)
+        City.objects.create(id=2, name="제주", code="CJU", category_id=1)
+        Seat.objects.create(id=1, type="비즈니스")
+        FlightSeat.objects.create(
+            id=1,
+            stock=3,
+            price=139000,
+            flight_id=1,
+            seat_id=1
+        )
+        Airline.objects.create(
+            id=1,
+            name="찬주프로",
+            logo="https://postfiles.pstatic.net/MjAyMjAxMTJfMjM5/MDAxNjQxOTg2NDgyNTY1.j1EtZziHhsuxfoRqmswcZFBZw4TQLdlPgD76IUviWU0g.Qf4_r2cIET-8Aox-iDTUpR9pSX2JcedcCrenLYMK-zIg.PNG.leecj0805/ms.png?type=w966"
+        )
+        
+    def test_sussess_main_view_get_method(self):
+        client = Client()
+        response = client.get('/flights/main')
+
+        result = {
+            "city" : "제주",
+            "data" : [
+                {
+                "id"             : 1,
+                "image"          : "https://postfiles.pstatic.net/MjAyMjAxMTJfMjM5/MDAxNjQxOTg2NDgyNTY1.j1EtZziHhsuxfoRqmswcZFBZw4TQLdlPgD76IUviWU0g.Qf4_r2cIET-8Aox-iDTUpR9pSX2JcedcCrenLYMK-zIg.PNG.leecj0805/ms.png?type=w966",
+                "departure_city" : "김포",
+                "arrival_city"   : "제주", 
+                "departure_time" : "2022-01-19T06:24:35Z",
+                "arrival_time"   : "2022-01-19T06:24:35Z",
+                "price"          : 139000
+                }
+            ]}
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'result': result})
+
+    def tearDown(self):
+        Flight.objects.all().delete()
+        Thumbnail.objects.all().delete()
+        Airline.objects.all().delete()
+        Aircraft.objects.all().delete()
+        Category.objects.all().delete()
+        City.objects.all().delete()
+        Seat.objects.all().delete()
+        FlightSeat.objects.all().delete()

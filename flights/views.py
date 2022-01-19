@@ -3,10 +3,9 @@ from datetime import datetime, timedelta
 
 from django.http import JsonResponse
 from django.views import View
-from django.db.models import Q
+from django.db.models import Q, Min
 
-from flights.models import Flight, FlightSeat, Airline, City, Category, Seat
-
+from flights.models import Flight, FlightSeat, Airline, City, Category, Seat, Thumbnail
 
 class FlightListView(View):
     def get(self, request):
@@ -132,7 +131,7 @@ class FlightDetailView(View):
                     "aircraft"   : flight_seat.flight.aircraft.code,
                     "logo"       : flight_seat.flight.aircraft.airline.logo,
                     "price"      : flight_seat.price,
-                    "seat_type"  : flight_seat.seat.id,
+                    "seat_type"  : flight_seat.seat.type,
                     "departure": {
                         "time": flight_seat.flight.departure_time,
                         "city": flight_seat.flight.departure_city.name,
@@ -184,3 +183,25 @@ class SeatTypeView(View):
             } for seat in seats],
         }
         return JsonResponse({"result":result}, status=200)
+
+class MainView(View):
+    def get(self, request):
+        city = request.GET.get("city")
+        offset = request.GET.get("offset", 0)
+        limit = request.GET.get("limit", 4)
+
+        flights= Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city__name = city)
+
+        result = {
+            "city" : city,
+            "data" : [{
+                "id"             : flight.id,
+                "image"          : Thumbnail.objects.filter(city_id=flight.arrival_city.id).order_by("?").first().image,
+                "departure_city" : flight.departure_city.name,
+                "arrival_city"   : flight.arrival_city.name, 
+                "departure_time" : flight.departure_time,
+                "arrival_time"   : flight.arrival_time,
+                "price"          : int(flight.min_price)
+           } for flight in flights.order_by("min_price")[offset:offset+limit]]}
+
+        return JsonResponse({"result": result}, status=200)

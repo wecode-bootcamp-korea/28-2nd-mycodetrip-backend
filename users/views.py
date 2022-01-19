@@ -51,7 +51,7 @@ class AuthorizationView(View):
                 "exp": now + datetime.timedelta(days=7),
                 "iat": now,
             }
-            access_token = jwt.encode(payload, SECRET_KEY, "HS256")
+            access_token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
             if is_created:
                 status = 201
