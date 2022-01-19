@@ -3,10 +3,9 @@ from datetime import datetime, timedelta
 
 from django.http import JsonResponse
 from django.views import View
-from django.db.models import Q
+from django.db.models import Q, Min
 
 from flights.models import Flight, FlightSeat, Airline, City, Category, Seat
-
 
 class FlightListView(View):
     def get(self, request):
@@ -184,3 +183,43 @@ class SeatTypeView(View):
             } for seat in seats],
         }
         return JsonResponse({"result":result}, status=200)
+
+class MainView(View):
+    def get(self, request):
+        # main_card = request.GET.get('main-card', None)
+
+        q = Q()
+        
+        # if main_card == '제주':
+        #     q &= Q(arrival_city__name = main_card)
+        #     flights = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(q).order_by("min_price")[0:4]
+
+        # if main_card == '파리':
+        #     q &= Q(arrival_city__name = main_card)
+        #     flights = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(q).order_by("min_price")[0:4]
+
+        flights_jeju = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city = "제주").order_by("min_price")[0:4]
+        flights_paris = Flight.objects.annotate(min_price = Min("flightseat__price")).filter(arrival_city = "파리").order_by("min_price")[0:4]
+
+        result = [{
+            "제주" : [{
+                "id"             : flight.id,
+                "image"          : flight.arrival_city.thumbnail_set.first().image,
+                "departure_city" : flight.departure_city.name,
+                "arrival_city"   : flight.arrival_city.name, 
+                "departure_time" : flight.departure_time,
+                "arrival_time"   : flight.arrival_time,
+                "price"          : int(flight.min_price)
+           } for flight in flights_jeju]},
+           {
+            "파리" : [{
+               "id"             : flight.id,
+                "image"          : flight.arrival_city.thumbnail_set.first().image,
+                "departure_city" : flight.departure_city.name,
+                "arrival_city"   : flight.arrival_city.name, 
+                "departure_time" : flight.departure_time,
+                "arrival_time"   : flight.arrival_time,
+                "price"          : int(flight.min_price)
+           } for flight in flights_paris]}
+        ]
+        return JsonResponse({"result": result}, status=200)
