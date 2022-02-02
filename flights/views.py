@@ -20,10 +20,10 @@ class FlightListView(View):
             arrival_city   = request.GET["arrival_city"]
 
             # 선택 쿼리파라미터
-            airline_list = request.GET.getlist("airline_list")
+            airline_list = request.GET.getlist("airline_list")# ['1', '2', '']
             at_time      = request.GET.getlist("at_time") # ['0','6','12','18'], 없을땐 [] 빈리스트 반환
             seat_type    = request.GET.getlist("seat_type")
-            sorting      = request.GET.get("sorting", "lower_price")
+            sorting      = request.GET.get("sorting", "lower_price") # sorting=''
             max_price    = request.GET.get("max_price", None)
             offset       = int(request.GET.get("offset", 0))
             limit        = int(request.GET.get("limit", 20))
@@ -32,53 +32,67 @@ class FlightListView(View):
             year, month, day = map(int,departure_date.split("-"))
             aware_datetime = datetime(year,month,day, tzinfo=KST)
 
-            time_set = {
-                0: aware_datetime,
-                6: aware_datetime+timedelta(hours=6),
-                12: aware_datetime+timedelta(hours=12),
-                18: aware_datetime+timedelta(hours=18),
-                24: aware_datetime+timedelta(hours=24)
-            }
+        except KeyError:
+            return JsonResponse({"message":"KEY_ERROR"}, status=400)
 
-            sort_set = {
-                "lower_price"      : "flightseat__price", # 테이블명 소문자
-                "earlier_departure": "departure_time",
-                "late_departure"   : "-departure_time",
-            }
+        if '' in airline_list:
+            airline_list.remove('')
 
-            q = Q()
-            q &= Q(departure_city__name=departure_city, arrival_city__name=arrival_city)
-            q &= Q(departure_time__range=(time_set[0], time_set[24]))
+        if '' in at_time:
+            at_time.remove('')
 
-            if at_time:
-                time_q = Q()
-                if '0' in at_time:
-                    time_q |= Q(departure_time__range=(time_set[0], time_set[6]))
-                if '6' in at_time:
-                    time_q |= Q(departure_time__range=(time_set[6], time_set[12]))
-                if '12' in at_time:
-                    time_q |= Q(departure_time__range=(time_set[12], time_set[18]))
-                if '18' in at_time:
-                    time_q |= Q(departure_time__range=(time_set[18], time_set[24]))
+        if '' in seat_type:
+            seat_type.remove('')
 
-                q &= time_q
+        if sorting == '':
+            sorting = "lower_price"
+
+        if max_price == '':
+            max_price=MAX_PRICE
 
 
-            if not max_price:
-                max_price = MAX_PRICE
+        time_set = {
+            0: aware_datetime,
+            6: aware_datetime+timedelta(hours=6),
+            12: aware_datetime+timedelta(hours=12),
+            18: aware_datetime+timedelta(hours=18),
+            24: aware_datetime+timedelta(hours=24)
+        }
 
+        sort_set = {
+            "lower_price"      : "flightseat__price", # 테이블명 소문자
+            "earlier_departure": "departure_time",
+            "late_departure"   : "-departure_time",
+        }
 
-            if airline_list:
-                q &= Q(aircraft__airline__id__in=airline_list)
-            if seat_type:
-                q &= Q(flightseat__seat_id__in=seat_type)
-            if max_price:
-                q &= Q(flightseat__price__lte=int(max_price))
+        q = Q()
+        q &= Q(departure_city__name=departure_city, arrival_city__name=arrival_city)
+        q &= Q(departure_time__range=(time_set[0], time_set[24]))
 
-            flights_query = Flight.objects.filter(q).order_by(sort_set[sorting])
-            flights = flights_query.select_related("departure_city","arrival_city","aircraft")[offset:offset+limit]
+        if at_time:
+            time_q = Q()
+            if '0' in at_time:
+                time_q |= Q(departure_time__range=(time_set[0], time_set[6]))
+            if '6' in at_time:
+                time_q |= Q(departure_time__range=(time_set[6], time_set[12]))
+            if '12' in at_time:
+                time_q |= Q(departure_time__range=(time_set[12], time_set[18]))
+            if '18' in at_time:
+                time_q |= Q(departure_time__range=(time_set[18], time_set[24]))
 
+            q &= time_q
 
+        if airline_list:
+            q &= Q(aircraft__airline__id__in=airline_list)
+        if seat_type:
+            q &= Q(flightseat__seat_id__in=seat_type)
+        if max_price:
+            q &= Q(flightseat__price__lte=int(max_price))
+
+        flights_query = Flight.objects.filter(q).order_by(sort_set[sorting])
+        flights = flights_query.select_related("departure_city","arrival_city","aircraft")[offset:offset+limit]
+
+        try:
             result = {
                 "total": flights_query.count(), # 총 항공편 개수
                 "departure_date": departure_date,
@@ -92,7 +106,7 @@ class FlightListView(View):
                     "logo"       : flight.aircraft.airline.logo,
                     "price"      : int(FlightSeat.objects.get(flight=flight, seat=seat).price),
                     "tickets"    : FlightSeat.objects.get(flight=flight).stock, # 구매 가능한 티켓 수
-                    "seat_type"  : FlightSeat.objects.get(flight=flight).seat_id, # 좌석 등급
+                    "seat_type"  : FlightSeat.objects.get(flight=flight).seat.type, # 좌석 등급
                     "departure": {
                         "time": flight.departure_time, # 출발 시간
                         "city": flight.departure_city.name, # 출발 도시명
@@ -110,41 +124,42 @@ class FlightListView(View):
         except FlightSeat.DoesNotExist:
             return JsonResponse({"message":"FLIGHTSEAT_DOES_NOT_EXIST"}, status=400)
 
-        except KeyError:
-            return JsonResponse({"message":"KEY_ERROR"}, status=400)
 
 
 class FlightDetailView(View):
     def get(self, request):
-        # id 값을 통해서 예약 페이지 항공편 조회
-        departure_flight = request.GET.get("departure_flight") # pk = 1332
-        return_flight    = request.GET.get("return_flight")
+        try:
+            # id 값을 통해서 예약 페이지 항공편 조회
+            departure_flight = request.GET["departure_flight"] # pk = 1332
+            return_flight    = request.GET["return_flight"]
 
-        flight_seats = FlightSeat.objects.filter(Q(id=departure_flight)|Q(id=return_flight)).order_by("flight__departure_time")
+            flight_seats = FlightSeat.objects.filter(Q(id=departure_flight)|Q(id=return_flight)).order_by("flight__departure_time")
 
-        result = {
-            "type": "selected_flights",
-            "date":[{
-                "id": flight_seat.id,
-                "flight_time": flight_seat.flight.flight_time,
-                    "airline"    : flight_seat.flight.aircraft.airline.name,
-                    "aircraft"   : flight_seat.flight.aircraft.code,
-                    "logo"       : flight_seat.flight.aircraft.airline.logo,
-                    "price"      : flight_seat.price,
-                    "seat_type"  : flight_seat.seat.type,
-                    "departure": {
-                        "time": flight_seat.flight.departure_time,
-                        "city": flight_seat.flight.departure_city.name,
-                        "code": flight_seat.flight.departure_city.code,
-                    },
-                    "arrival": {
-                        "time": flight_seat.flight.arrival_time,
-                        "city": flight_seat.flight.arrival_city.name,
-                        "code": flight_seat.flight.arrival_city.code,
-                    },
-            } for flight_seat in flight_seats]
-        }
-        return JsonResponse({"result":result}, status=200)
+            result = {
+                "type": "selected_flights",
+                "data":[{
+                    "id": flight_seat.id,
+                    "flight_time": flight_seat.flight.flight_time,
+                        "airline"    : flight_seat.flight.aircraft.airline.name,
+                        "aircraft"   : flight_seat.flight.aircraft.code,
+                        "logo"       : flight_seat.flight.aircraft.airline.logo,
+                        "price"      : flight_seat.price,
+                        "seat_type"  : flight_seat.seat.type,
+                        "departure": {
+                            "time": flight_seat.flight.departure_time,
+                            "city": flight_seat.flight.departure_city.name,
+                            "code": flight_seat.flight.departure_city.code,
+                        },
+                        "arrival": {
+                            "time": flight_seat.flight.arrival_time,
+                            "city": flight_seat.flight.arrival_city.name,
+                            "code": flight_seat.flight.arrival_city.code,
+                        },
+                } for flight_seat in flight_seats]
+            }
+            return JsonResponse({"result":result}, status=200)
+        except KeyError:
+            return JsonResponse({"message":"KEY_ERROR"}, status=400)
 
 class CityListView(View):
     def get(self, request):
@@ -198,7 +213,7 @@ class MainView(View):
                 "id"             : flight.id,
                 "image"          : Thumbnail.objects.filter(city_id=flight.arrival_city.id).order_by("?").first().image,
                 "departure_city" : flight.departure_city.name,
-                "arrival_city"   : flight.arrival_city.name, 
+                "arrival_city"   : flight.arrival_city.name,
                 "departure_time" : flight.departure_time,
                 "arrival_time"   : flight.arrival_time,
                 "price"          : int(flight.min_price)

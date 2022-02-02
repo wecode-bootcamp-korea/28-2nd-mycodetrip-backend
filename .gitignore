@@ -384,3 +384,4 @@ uploader.py
 
 resource
 *.csv
+data/

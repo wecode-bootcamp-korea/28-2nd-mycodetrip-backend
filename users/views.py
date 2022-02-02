@@ -66,23 +66,23 @@ class AuthorizationView(View):
 class UserOrderView(View):
     @login_required
     def get(self, request):
-        orders = Order.objects.filter(user=request.user).order_by("-created_at", "id")
+        orders = Order.objects.filter(user_id=request.user.id).order_by("-created_at", "id")
 
         result = {
             "type": "order_list",
             "data": [{
                 "id"                 : order.id,
                 "reservation_number" : order.order_number,
-                "total_price"        : order.total_price,
+                "total_price"        : int(order.total_price),
                 "number_of_tickets"  :order.number_of_tickets,
                 "flights" : [{
-                    "id"         : order_item.flight_seats.id,
-                    "airline"    : order_item.flight_seats.flight.aircraft.airline.name,
-                    "departure"  : order_item.flight_seats.flight.departure_city.name,
-                    "arrival"    : order_item.flight_seats.flight.arrival_city.name,
-                    "travel_date": datetime.date(order_item.flight_seats.flight.departure_time),
-                    "logo"       : order_item.flight_seats.flight.aircraft.airline.logo
-                } for order_item in order.orderitems_set().order_by('flight_seats__flight__depature_time')]
+                    "id"         : order_item.flight_seat.id,
+                    "airline"    : order_item.flight_seat.flight.aircraft.airline.name,
+                    "departure"  : order_item.flight_seat.flight.departure_city.name,
+                    "arrival"    : order_item.flight_seat.flight.arrival_city.name,
+                    "travel_date": (order_item.flight_seat.flight.departure_time).date(),
+                    "logo"       : order_item.flight_seat.flight.aircraft.airline.logo
+                } for order_item in order.orderitems_set.order_by("flight_seat__flight__departure_time")]
             } for order in orders]
         }
 
