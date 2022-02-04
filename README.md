@@ -65,7 +65,24 @@
 
 <br>
 
+### 이민석
 
+> Mission 1 | 모델 작성
+
+- 모델링 작성 후 models.py와 diagram 작성
+
+> Mission 2 | 오더 페이지
+
+- random digits를 이용한 주문번호 생성 (랜덤에 적합한 uuid4로 변경)
+- passengers를 리스트 형태로 받아서 한 번의 요청에 여러 정보 저장
+
+> Mission 3 | 메인 페이지
+
+- 여러 번 참조를 거치는 방식이 아닌 annotate를 이용하여 원하는 filter를 사용한 column을 생성하여 참조
+- order_by("?")를 사용하여 같은 출력에 대한 이미지를 랜덤으로 출력
+- request 값에 따라 다른 API호출하도록 구성
+
+<br>
 
 ## Postman
 - 포스트맨을 이용해 API 문서화를 진행했습니다.
